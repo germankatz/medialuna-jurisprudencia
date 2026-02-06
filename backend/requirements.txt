@@ -1,0 +1,30 @@
+# FastAPI y servidor
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# Base de datos PostgreSQL
+sqlalchemy[asyncio]==2.0.23
+asyncpg==0.29.0
+python-dotenv==1.0.0
+
+# LlamaIndex core
+llama-index>=0.10.0
+
+# LlamaIndex integraciones
+llama-index-llms-ollama>=0.1.0
+llama-index-embeddings-huggingface>=0.2.0
+llama-index-vector-stores-chroma>=0.1.0
+
+# Base de datos vectorial
+chromadb>=0.4.0
+
+# Lectura de PDFs
+pypdf>=3.0.0
+
+# Versiones fijas para evitar conflictos en Mac M4 / Python 3.9
+numpy>=1.21.0,<2.0.0
+torch>=2.0.0,<2.3.0
+transformers>=4.30.0
+sentence-transformers>=2.2.0
+tokenizers>=0.13.0,<0.20.0
