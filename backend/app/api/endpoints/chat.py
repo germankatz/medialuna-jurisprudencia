@@ -88,7 +88,7 @@ Responde de forma clara, precisa y profesional. Si citas fuentes, hazlo de maner
         )
         
         # Ejecutar consulta
-        response = chat_engine.chat(request.query)
+        response = await chat_engine.achat(request.query)
         
         # Extraer fuentes si existen, deduplicando por document_id y filtrando por relevancia
         sources = []
