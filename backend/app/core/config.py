@@ -12,6 +12,10 @@ PERSIST_DIR = os.getenv("PERSIST_DIR", "./chroma_db")
 # Directorio para guardar archivos PDF subidos
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 
+# Clave de administrador para operaciones sensibles (ej: reset-all)
+# Si no está definida, estas operaciones estarán deshabilitadas
+ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY")
+
 # Embeddings locales con HuggingFace (corre en Python/Mac M4)
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
 

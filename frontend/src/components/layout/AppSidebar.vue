@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import api from '@/services/api'
 
 defineProps({
@@ -42,8 +43,10 @@ const handleLogoClick = () => {
 
 const showResetDialog = ref(false)
 const isResetting = ref(false)
+const adminKey = ref('')
 
 const handleResetClick = () => {
+  adminKey.value = ''
   showResetDialog.value = true
 }
 
@@ -51,7 +54,12 @@ const confirmReset = async () => {
   isResetting.value = true
 
   try {
-    const response = await api.post('/documents/reset-all')
+    const headers = {}
+    if (adminKey.value) {
+      headers['X-Admin-Key'] = adminKey.value
+    }
+
+    const response = await api.post('/documents/reset-all', {}, { headers })
     console.log('Sistema reiniciado:', response.data)
 
     // Recargar la página para reflejar los cambios
@@ -147,6 +155,16 @@ const confirmReset = async () => {
               <li>Todos los archivos PDF almacenados</li>
             </ul>
             <p class="font-bold text-red-600 mt-3">Esta acción no se puede deshacer.</p>
+
+            <div class="mt-4 pt-2 border-t border-zinc-800">
+              <label class="text-sm font-medium text-zinc-400">Clave de Administrador</label>
+              <Input
+                v-model="adminKey"
+                type="password"
+                placeholder="Ingresa la clave si está configurada"
+                class="mt-2"
+              />
+            </div>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter class="gap-2 sm:gap-0">

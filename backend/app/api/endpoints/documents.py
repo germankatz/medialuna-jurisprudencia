@@ -6,10 +6,11 @@ El procesamiento (indexación) se delega al servicio de ingest.
 """
 import os
 import logging
+import secrets
 import unicodedata
 import shutil
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_
@@ -20,7 +21,7 @@ from app.db.models import Document, Origen
 from app.schemas.document import DocumentResponse, DocumentListResponse, DocumentUpdateOrigen
 from app.services.vector_store import delete_document_chunks, cleanup_orphan_chunks
 from app.services.content_extractor import ContentExtractor
-from app.core.config import PERSIST_DIR, UPLOAD_DIR
+from app.core.config import PERSIST_DIR, UPLOAD_DIR, ADMIN_SECRET_KEY
 from llama_index.core import SimpleDirectoryReader
 
 logger = logging.getLogger(__name__)
@@ -593,7 +594,10 @@ async def cleanup_vector_store(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/reset-all")
-async def reset_all_data(db: AsyncSession = Depends(get_db)):
+async def reset_all_data(
+    admin_key: str = Header(None, alias="X-Admin-Key"),
+    db: AsyncSession = Depends(get_db)
+):
     """
     ELIMINA TODOS LOS DATOS DEL SISTEMA.
 
@@ -603,11 +607,23 @@ async def reset_all_data(db: AsyncSession = Depends(get_db)):
     - Todos los archivos PDF del directorio de uploads
     - Todos los archivos de índice de LlamaIndex
 
+    Requiere autenticación mediante header X-Admin-Key.
+    La clave debe coincidir con la variable de entorno ADMIN_SECRET_KEY.
+
     ADVERTENCIA: Esta acción no se puede deshacer.
 
     Returns:
         dict: Resumen de los datos eliminados.
     """
+    if not ADMIN_SECRET_KEY:
+        raise HTTPException(
+            status_code=403,
+            detail="Reset feature is disabled on this server. Set ADMIN_SECRET_KEY environment variable."
+        )
+
+    if not secrets.compare_digest(admin_key or "", ADMIN_SECRET_KEY):
+        raise HTTPException(status_code=403, detail="Invalid admin key.")
+
     try:
         deleted_count = 0
         deleted_files = 0
