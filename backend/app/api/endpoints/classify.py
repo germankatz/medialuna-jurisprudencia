@@ -1,6 +1,7 @@
 """
 Endpoint para clasificación de documentos por origen usando IA.
 """
+import asyncio
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -139,8 +140,7 @@ async def classify_batch(
             detail="No hay orígenes configurados en el sistema"
         )
 
-    results = []
-    for item in request.items:
+    async def process_item(item):
         item_id = item.get('id')
         caratula = item.get('caratula', '')
 
@@ -151,10 +151,13 @@ async def classify_batch(
         else:
             codigo, origen_id = await classify_caratula(caratula, origenes_map)
 
-        results.append({
+        return {
             'id': item_id,
             'origen_codigo': codigo,
             'origen_id': origen_id
-        })
+        }
+
+    tasks = [process_item(item) for item in request.items]
+    results = await asyncio.gather(*tasks)
 
     return ClassifyBatchResponse(results=results)
