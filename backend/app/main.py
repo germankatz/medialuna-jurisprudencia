@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings  # Aplica Settings de LlamaIndex
+from app.core.config import settings, ALLOWED_ORIGINS  # Aplica Settings de LlamaIndex
 from app.api.endpoints import chat, ingest, documents, origins, classify
 from app.db.database import init_db
 
@@ -40,7 +40,7 @@ app = FastAPI(
 # Configurar CORS para el frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar dominios
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
