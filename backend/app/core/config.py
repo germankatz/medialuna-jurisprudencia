@@ -12,6 +12,13 @@ PERSIST_DIR = os.getenv("PERSIST_DIR", "./chroma_db")
 # Directorio para guardar archivos PDF subidos
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 
+# Dominios permitidos para CORS
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+
 # Embeddings locales con HuggingFace (corre en Python/Mac M4)
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
 
