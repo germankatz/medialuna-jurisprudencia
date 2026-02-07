@@ -71,7 +71,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="La consulta no puede estar vacía")
     
     try:
-        logger.info(f"Procesando consulta: {request.query[:100]}...")
+        logger.info("Procesando consulta...")
         
         # Obtener índice y crear chat engine en modo context
         index = get_index()
@@ -88,7 +88,7 @@ Responde de forma clara, precisa y profesional. Si citas fuentes, hazlo de maner
         )
         
         # Ejecutar consulta
-        response = chat_engine.chat(request.query)
+        response = await chat_engine.achat(request.query)
         
         # Extraer fuentes si existen, deduplicando por document_id y filtrando por relevancia
         sources = []

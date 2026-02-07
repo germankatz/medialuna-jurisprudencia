@@ -16,6 +16,13 @@ UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 # Si no está definida, estas operaciones estarán deshabilitadas
 ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY")
 
+# Dominios permitidos para CORS
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+
 # Embeddings locales con HuggingFace (corre en Python/Mac M4)
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
 
