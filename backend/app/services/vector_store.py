@@ -7,6 +7,23 @@ from app.core.config import PERSIST_DIR
 
 logger = logging.getLogger(__name__)
 
+# Variable global para almacenar el cliente de ChromaDB (Singleton)
+_chroma_client = None
+
+
+def get_chroma_client():
+    """
+    Obtiene o crea el cliente persistente de ChromaDB como Singleton.
+
+    Returns:
+        chromadb.PersistentClient: Cliente de ChromaDB.
+    """
+    global _chroma_client
+    if _chroma_client is None:
+        logger.info(f"Inicializando cliente ChromaDB en {PERSIST_DIR}")
+        _chroma_client = chromadb.PersistentClient(path=PERSIST_DIR)
+    return _chroma_client
+
 
 def get_chroma_collection():
     """
@@ -15,7 +32,7 @@ def get_chroma_collection():
     Returns:
         chromadb.Collection: Colección de ChromaDB.
     """
-    db = chromadb.PersistentClient(path=PERSIST_DIR)
+    db = get_chroma_client()
     return db.get_or_create_collection("jurisprudencia")
 
 
@@ -110,9 +127,8 @@ def get_index() -> VectorStoreIndex:
         Exception: Si hay error al conectar con ChromaDB o crear el índice.
     """
     try:
-        # Conectar a ChromaDB persistente
-        db = chromadb.PersistentClient(path=PERSIST_DIR)
-        chroma_collection = db.get_or_create_collection("jurisprudencia")
+        # Obtener colección usando el cliente singleton
+        chroma_collection = get_chroma_collection()
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
         
         # Verificar si existe docstore.json (indica que LlamaIndex ya persistió el índice)
