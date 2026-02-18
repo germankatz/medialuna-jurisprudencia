@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from app.db.database import get_db
 from app.db.models import Document, Origen
 from app.services.ingest_service import IngestService, extract_caratula
+from app.services.vector_store import ensure_cosine_collection
 from app.schemas.document import DocumentUploadResponse
 from llama_index.core import SimpleDirectoryReader
 
@@ -247,3 +248,72 @@ async def upload_pdf(
                 logger.info("Archivo temporal eliminado")
             except Exception as e:
                 logger.warning(f"No se pudo eliminar archivo temporal: {str(e)}")
+
+
+class ReindexResponse(BaseModel):
+    """Response schema for reindex operation."""
+    status: str
+    migrated: bool
+    documents_processed: int
+    total_chunks: int
+    errors: list
+
+
+@router.post("/reindex", response_model=ReindexResponse)
+async def reindex_all_documents(db: AsyncSession = Depends(get_db)):
+    """
+    Re-indexa todos los documentos en ChromaDB.
+
+    Migra la colección a distancia coseno si es necesario, luego
+    re-procesa todos los PDFs registrados en la BD con los nuevos
+    parámetros de chunking.
+    """
+    try:
+        # Paso 1: Migrar colección a coseno si usa L2
+        migrated = ensure_cosine_collection()
+
+        # Paso 2: Re-procesar todos los documentos
+        result = await db.execute(select(Document))
+        documents = result.scalars().all()
+
+        service = IngestService()
+        processed = 0
+        total_chunks = 0
+        errors = []
+
+        for doc in documents:
+            if not doc.file_path or not os.path.exists(doc.file_path):
+                errors.append(f"Doc {doc.id} ({doc.name}): archivo no encontrado en {doc.file_path}")
+                continue
+
+            try:
+                ingest_result = await service.process_pdf(
+                    doc.file_path,
+                    document_id=doc.id,
+                    original_filename=doc.original_filename
+                )
+                doc.chunks_count = ingest_result["chunks_created"]
+                if ingest_result.get("caratula"):
+                    doc.caratula = ingest_result["caratula"]
+                if ingest_result.get("search_content"):
+                    doc.search_content = ingest_result["search_content"]
+                total_chunks += ingest_result["chunks_created"]
+                processed += 1
+                logger.info(f"Re-indexado doc {doc.id}: {ingest_result['chunks_created']} chunks")
+            except Exception as e:
+                errors.append(f"Doc {doc.id} ({doc.name}): {str(e)}")
+                logger.error(f"Error re-indexando doc {doc.id}: {str(e)}")
+
+        await db.commit()
+
+        return ReindexResponse(
+            status="completed",
+            migrated=migrated,
+            documents_processed=processed,
+            total_chunks=total_chunks,
+            errors=errors
+        )
+
+    except Exception as e:
+        logger.error(f"Error en re-indexación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error en re-indexación: {str(e)}")

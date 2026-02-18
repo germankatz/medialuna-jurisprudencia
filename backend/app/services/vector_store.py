@@ -7,16 +7,24 @@ from app.core.config import PERSIST_DIR
 
 logger = logging.getLogger(__name__)
 
+# Nombre de la colección y métrica de distancia.
+# IMPORTANTE: Usar cosine porque BGE-M3 genera embeddings normalizados
+# y LlamaIndex calcula scores con math.exp(-distance), fórmula diseñada
+# para distancia coseno (rango 0-2), NO para L2 (rango 0-infinito).
+# Con L2, los scores quedaban artificialmente bajos (~35-39%).
+COLLECTION_NAME = "jurisprudencia"
+COLLECTION_METADATA = {"hnsw:space": "cosine"}
+
 
 def get_chroma_collection():
     """
     Obtiene la colección de ChromaDB para operaciones directas.
-    
+
     Returns:
         chromadb.Collection: Colección de ChromaDB.
     """
     db = chromadb.PersistentClient(path=PERSIST_DIR)
-    return db.get_or_create_collection("jurisprudencia")
+    return db.get_or_create_collection(COLLECTION_NAME, metadata=COLLECTION_METADATA)
 
 
 def delete_document_chunks(document_id: int) -> int:
@@ -99,6 +107,48 @@ def cleanup_orphan_chunks(valid_document_ids: list) -> dict:
         raise
 
 
+def ensure_cosine_collection():
+    """
+    Verifica que la colección use distancia coseno. Si usa L2 (default viejo),
+    la elimina para que se recree con coseno en la próxima operación.
+
+    Returns:
+        bool: True si se migró (la colección fue eliminada), False si ya estaba bien.
+    """
+    try:
+        db = chromadb.PersistentClient(path=PERSIST_DIR)
+        existing_collections = db.list_collections()
+
+        # Buscar nuestra colección
+        for col in existing_collections:
+            if col.name == COLLECTION_NAME:
+                # Verificar la métrica actual
+                metadata = col.metadata or {}
+                space = metadata.get("hnsw:space", "l2")
+                if space != "cosine":
+                    logger.warning(
+                        f"Colección '{COLLECTION_NAME}' usa métrica '{space}' "
+                        f"(se requiere 'cosine'). Eliminando para recrear..."
+                    )
+                    db.delete_collection(COLLECTION_NAME)
+                    # También limpiar docstore de LlamaIndex
+                    docstore_path = os.path.join(PERSIST_DIR, "docstore.json")
+                    if os.path.exists(docstore_path):
+                        os.remove(docstore_path)
+                        logger.info("docstore.json eliminado")
+                    return True
+                else:
+                    logger.info(f"Colección '{COLLECTION_NAME}' ya usa métrica cosine")
+                    return False
+
+        # No existe, se creará con cosine al primer uso
+        return False
+
+    except Exception as e:
+        logger.error(f"Error verificando métrica de colección: {str(e)}")
+        return False
+
+
 def get_index() -> VectorStoreIndex:
     """
     Obtiene o crea el índice vectorial con ChromaDB persistente.
@@ -112,7 +162,9 @@ def get_index() -> VectorStoreIndex:
     try:
         # Conectar a ChromaDB persistente
         db = chromadb.PersistentClient(path=PERSIST_DIR)
-        chroma_collection = db.get_or_create_collection("jurisprudencia")
+        chroma_collection = db.get_or_create_collection(
+            COLLECTION_NAME, metadata=COLLECTION_METADATA
+        )
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
         
         # Verificar si existe docstore.json (indica que LlamaIndex ya persistió el índice)

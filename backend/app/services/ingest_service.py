@@ -102,13 +102,17 @@ class IngestService:
     def __init__(self):
         """
         Inicializa el servicio con el splitter semántico y extractor de contenido.
-        
-        CRITICO: buffer_size=1 y breakpoint_percentile_threshold=80
-        para separar correctamente las sentencias jurídicas.
+
+        Parámetros de chunking calibrados para documentos jurídicos:
+        - buffer_size=2: agrupa de a 2 oraciones para evaluar similitud,
+          lo que da contexto suficiente para no cortar argumentos legales.
+        - breakpoint_percentile_threshold=92: cercano al default (95),
+          produce chunks más grandes y auto-contenidos. Con 80 se generaban
+          chunks demasiado pequeños que cortaban razonamientos judiciales.
         """
         self.splitter = SemanticSplitterNodeParser(
-            buffer_size=1,
-            breakpoint_percentile_threshold=80,
+            buffer_size=2,
+            breakpoint_percentile_threshold=92,
             embed_model=Settings.embed_model
         )
         self.content_extractor = ContentExtractor()

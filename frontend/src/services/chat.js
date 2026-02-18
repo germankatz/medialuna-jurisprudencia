@@ -12,15 +12,20 @@ import api from './api'
 export const chatService = {
   /**
    * Envía un mensaje al asistente y recibe una respuesta.
-   * 
+   *
    * La respuesta incluye el texto generado y las fuentes relevantes
    * de la jurisprudencia indexada.
-   * 
+   *
    * @param {string} query - Pregunta o consulta del usuario
+   * @param {Array<{role: string, content: string}>} history - Historial de mensajes previos
    * @returns {Promise<{response: string, sources: Array<{text: string, score?: number}>}>}
    */
-  async sendMessage(query) {
-    const response = await api.post('/chat/', { query })
+  async sendMessage(query, history = []) {
+    const payload = { query }
+    if (history.length > 0) {
+      payload.history = history
+    }
+    const response = await api.post('/chat/', payload)
     return response.data
   }
 }

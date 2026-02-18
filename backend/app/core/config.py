@@ -16,6 +16,7 @@ UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
 
 # LLM conecta a Ollama local
-Settings.llm = Ollama(model="llama3", request_timeout=360.0)
+# temperature=0.1 para respuestas factuales y deterministas (legal RAG)
+Settings.llm = Ollama(model="llama3", request_timeout=360.0, temperature=0.1)
 
 settings = Settings

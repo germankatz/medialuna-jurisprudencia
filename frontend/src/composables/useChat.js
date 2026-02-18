@@ -60,8 +60,16 @@ export function useChat() {
     loading.value = true
     
     try {
-      // Enviar al backend
-      const response = await chatService.sendMessage(query.trim())
+      // Construir historial de conversación para enviar al backend.
+      // Se envían los mensajes previos (sin el que acabamos de agregar)
+      // para que el LLM tenga contexto de la conversación.
+      const history = messages.value
+        .slice(0, -1)  // excluir el mensaje del usuario que recién agregamos
+        .filter(msg => !msg.isError)  // excluir mensajes de error
+        .map(msg => ({ role: msg.role, content: msg.content }))
+
+      // Enviar al backend con historial
+      const response = await chatService.sendMessage(query.trim(), history)
       
       // Transformar sources del backend al formato del frontend
       // Usar la carátula del documento si está disponible
